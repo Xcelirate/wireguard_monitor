@@ -67,7 +67,7 @@ Returns the raw WireGuard status data from the latest JSON file.
 **Response Example:**
 ```json
 {
-  "wg_secpipe_e1": {
+  "wg0": {
     "privateKey": "...",
     "publicKey": "...",
     "listenPort": 51823,
@@ -107,17 +107,25 @@ The application logs JSON to the system journal (syslog) when status changes are
 
 ```json
 {
+  "event": "status_change",
   "timestamp": 1765189500,
-  "status": {
-    "wg_secpipe_e1": {
-      "peer_public_key": {
-        "status": "connected",
-        "last_handshake_seconds_ago": 15,
-        "endpoint": "57.128.189.209:51823",
-        "allowedIps": ["10.150.94.2/32", "10.161.1.101/32"]
-      }
-    }
-  }
+  "interface": "wg0",
+  "peer": "peer_public_key",
+  "new_status": "connected"
+}
+```
+
+On startup, the initial status of all peers is logged:
+
+```json
+{
+  "event": "initial_status",
+  "timestamp": 1765189500,
+  "interface": "wg0",
+  "peer": "peer_public_key",
+  "status": "connected",
+  "endpoint": "57.128.189.209:51823",
+  "allowedIps": ["10.150.94.2/32", "10.161.1.101/32"]
 }
 ```
 
@@ -162,7 +170,7 @@ The script output should be valid JSON with the following structure:
    - If handshake was ≤30 seconds ago → "connected"
    - If handshake was 31-130 seconds ago → "disconnected"
    - If handshake was >130 seconds ago → not shown
-5. Status changes are logged to stdout as JSON
+5. Status changes are logged to syslog as JSON
 6. Current status is available via `/raw` endpoint
 
 ## Troubleshooting

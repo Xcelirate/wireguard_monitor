@@ -8,9 +8,9 @@ import logging
 from logging.handlers import SysLogHandler
 
 WG_JSON_SCRIPT = os.getenv('WIREGUARD_MONITOR_WG_JSON_SCRIPT', './tools/wg-json.bash')
-CONNECTED_INTERVAL = int(os.getenv('WIREGUARD_MONITOR_CONNECTED_INTERVAL', '30'))  # seconds
-DISCONNECTED_INTERVAL = int(os.getenv('WIREGUARD_MONITOR_DISCONNECTED_INTERVAL', '130'))  # seconds
-CHECK_INTERVAL = int(os.getenv('WIREGUARD_MONITOR_CHECK_INTERVAL', '30'))  # seconds
+CONNECTED_INTERVAL = int(os.getenv('WIREGUARD_MONITOR_CONNECTED_INTERVAL', '120'))  # seconds
+DISCONNECTED_INTERVAL = int(os.getenv('WIREGUARD_MONITOR_DISCONNECTED_INTERVAL', '180'))  # seconds
+CHECK_INTERVAL = int(os.getenv('WIREGUARD_MONITOR_CHECK_INTERVAL', '20'))  # seconds
 HOST = os.getenv('WIREGUARD_MONITOR_HOST', '0.0.0.0')
 PORT = int(os.getenv('WIREGUARD_MONITOR_PORT', '5000'))
 
@@ -74,21 +74,71 @@ def analyze_peers(status):
             # If delta > DISCONNECTED_INTERVAL, do not show the peer
     return result
 
+def strip_handshake_times(analysis):
+    # Recursively remove 'last_handshake_seconds_ago' from the analysis dict
+    if isinstance(analysis, dict):
+        new_analysis = {}
+        for k, v in analysis.items():
+            if isinstance(v, dict):
+                new_analysis[k] = strip_handshake_times(v)
+            elif k != 'last_handshake_seconds_ago':
+                new_analysis[k] = v
+        return new_analysis
+    return analysis
+
 def monitor_loop():
-    prev_analysis = None
+    prev_peer_status = {}  # {interface: {peer_key: status}}
+    first_run = True
     while True:
         try:
             status = get_wireguard_status()
             analysis = analyze_peers(status)
-            if analysis != prev_analysis:
-                output = {
-                    "timestamp": int(time.time()),
-                    "status": analysis
-                }
-                logger.info(json.dumps(output))
-                prev_analysis = analysis
+            current_peer_status = {}
+            now_ts = int(time.time())
+            # Build current status dict
+            for interface, peers in analysis.items():
+                current_peer_status[interface] = {}
+                for peer_key, peer_info in peers.items():
+                    current_peer_status[interface][peer_key] = peer_info["status"]
+            if first_run:
+                # On first run, log all peers' status
+                for interface, peers in analysis.items():
+                    for peer_key, peer_info in peers.items():
+                        logger.info(json.dumps({
+                            "event": "initial_status",
+                            "timestamp": now_ts,
+                            "interface": interface,
+                            "peer": peer_key,
+                            "status": peer_info["status"],
+                            "endpoint": peer_info.get("endpoint"),
+                            "allowedIps": peer_info.get("allowedIps", [])
+                        }))
+                first_run = False
+            else:
+                # On subsequent runs, only log status changes
+                for interface, peers in current_peer_status.items():
+                    for peer_key, status in peers.items():
+                        prev_status = prev_peer_status.get(interface, {}).get(peer_key)
+                        if prev_status and prev_status != status:
+                            logger.info(json.dumps({
+                                "event": "status_change",
+                                "timestamp": now_ts,
+                                "interface": interface,
+                                "peer": peer_key,
+                                "new_status": status
+                            }))
+                        elif prev_status is None:
+                            # New peer appeared
+                            logger.info(json.dumps({
+                                "event": "new_peer",
+                                "timestamp": now_ts,
+                                "interface": interface,
+                                "peer": peer_key,
+                                "status": status
+                            }))
+            prev_peer_status = current_peer_status
         except Exception as e:
-            logger.error(json.dumps({"error": str(e)}))
+            logger.error(json.dumps({"error": str(e), "timestamp": int(time.time())}))
         time.sleep(CHECK_INTERVAL)
 
 def main():
