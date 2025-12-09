@@ -14,9 +14,7 @@ A Flask-based application that monitors WireGuard VPN interface status and peer 
 
 ## Requirements
 
-- Python 3.13+
-- Flask 3.1.2+
-
+See `requirements.txt` for full dependency list.
 ## Installation
 
 1. Clone the repository:
@@ -37,71 +35,40 @@ pip install -r requirements.txt
 
 ## Usage
 
-### Running the Application
+### Running the Application (Development)
 
-Start the monitoring application:
+To run the Flask development server (not recommended for production):
+
 ```bash
-python main.py
+uv run main.py
 ```
 
-The application will:
-1. Start a Flask web server on the configured host and port (default: `0.0.0.0:5000`)
-2. Periodically execute the configured bash script (default: `./tools/wg-json.bash`) to get WireGuard status
-3. Log JSON status changes to the system journal (syslog)
+### Running with Gunicorn (Production)
 
-To run with custom configuration:
+To run the application in production mode using Gunicorn and environment variables for host and port:
+
 ```bash
-WIREGUARD_MONITOR_HOST=127.0.0.1 WIREGUARD_MONITOR_PORT=8080 python main.py
+uv sync  # or pip install -r requirements.txt
+export WIREGUARD_MONITOR_HOST=0.0.0.0
+export WIREGUARD_MONITOR_PORT=5000
+.venv/bin/gunicorn main:app -c gunicorn.conf.py
 ```
 
-To use a custom script:
-```bash
-WIREGUARD_MONITOR_WG_JSON_SCRIPT=/path/to/custom/script.bash python main.py
-```
+- The app will listen on the host and port specified by the environment variables, as set in gunicorn.conf.py.
+- This approach allows you to configure the address dynamically without changing the command.
+- Logging will be sent to the system journal via syslog.
 
-### API Endpoints
+## Configuration
 
-#### `/raw`
-Returns the raw WireGuard status data from the latest JSON file.
+You can configure the following environment variables:
+- `WIREGUARD_MONITOR_WG_JSON_SCRIPT`: Path to the WireGuard status script (default: `./tools/wg-json.bash`)
+- `WIREGUARD_MONITOR_CONNECTED_INTERVAL`: Seconds to consider a peer as connected (default: `120`)
+- `WIREGUARD_MONITOR_DISCONNECTED_INTERVAL`: Seconds to consider a peer as disconnected (default: `180`)
+- `WIREGUARD_MONITOR_CHECK_INTERVAL`: How often to check status (default: `20`)
+- `WIREGUARD_MONITOR_HOST`: Host for Flask app (default: `0.0.0.0`, only used for development server)
+- `WIREGUARD_MONITOR_PORT`: Port for Flask app (default: `5000`, only used for development server)
 
-**Response Example:**
-```json
-{
-  "wg0": {
-    "privateKey": "...",
-    "publicKey": "...",
-    "listenPort": 51823,
-    "peers": {
-      "peer_public_key": {
-        "endpoint": "57.128.189.209:51823",
-        "latestHandshake": 1765189425,
-        "transferRx": 1966140,
-        "transferTx": 4085712,
-        "persistentKeepalive": 25,
-        "allowedIps": ["10.150.94.2/32"]
-      }
-    }
-  }
-}
-```
-
-### Configuration
-
-All configuration is controlled via environment variables with the `WIREGUARD_MONITOR_` prefix:
-
-- **WIREGUARD_MONITOR_HOST** (default: `0.0.0.0`): Host address to bind the Flask server to
-- **WIREGUARD_MONITOR_PORT** (default: `5000`): Port to listen on
-- **WIREGUARD_MONITOR_WG_JSON_SCRIPT** (default: `./tools/wg-json.bash`): Path to the bash script that outputs WireGuard status as JSON
-- **WIREGUARD_MONITOR_CONNECTED_INTERVAL** (default: `30`): Time threshold (seconds) to consider a peer as "connected"
-- **WIREGUARD_MONITOR_DISCONNECTED_INTERVAL** (default: `130`): Time threshold (seconds) to consider a peer as "disconnected"
-- **WIREGUARD_MONITOR_CHECK_INTERVAL** (default: `30`): How often (seconds) to check and analyze the status
-
-**Example:**
-```bash
-WIREGUARD_MONITOR_HOST=127.0.0.1 WIREGUARD_MONITOR_PORT=8080 WIREGUARD_MONITOR_CONNECTED_INTERVAL=60 python main.py
-```
-
-### Status Output
+## Status Output
 
 The application logs JSON to the system journal (syslog) when status changes are detected:
 
