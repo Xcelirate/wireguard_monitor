@@ -6,6 +6,7 @@ import threading
 from flask import Flask, jsonify
 import logging
 from logging.handlers import SysLogHandler
+from threading import Lock
 
 WG_JSON_SCRIPT = os.getenv('WIREGUARD_MONITOR_WG_JSON_SCRIPT', './tools/wg-json.bash')
 CONNECTED_INTERVAL = int(os.getenv('WIREGUARD_MONITOR_CONNECTED_INTERVAL', '120'))  # seconds
@@ -86,6 +87,21 @@ def strip_handshake_times(analysis):
         return new_analysis
     return analysis
 
+monitor_thread_started = False
+monitor_thread_lock = Lock()
+
+def start_monitor_thread():
+    global monitor_thread_started
+    with monitor_thread_lock:
+        if not monitor_thread_started:
+            t = threading.Thread(target=monitor_loop, daemon=True)
+            t.start()
+            monitor_thread_started = True
+
+@app.before_request
+def before_request():
+    start_monitor_thread()
+
 def monitor_loop():
     prev_peer_status = {}  # {interface: {peer_key: status}}
     first_run = True
@@ -142,8 +158,7 @@ def monitor_loop():
         time.sleep(CHECK_INTERVAL)
 
 def main():
-    t = threading.Thread(target=monitor_loop, daemon=True)
-    t.start()
+    start_monitor_thread()
     app.run(host=HOST, port=PORT)
 
 if __name__ == "__main__":
