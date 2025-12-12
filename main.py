@@ -8,10 +8,10 @@ import logging
 from logging.handlers import SysLogHandler
 from threading import Lock
 
-WG_JSON_SCRIPT = os.getenv('WIREGUARD_MONITOR_WG_JSON_SCRIPT', './tools/wg-json.bash')
-CONNECTED_INTERVAL = int(os.getenv('WIREGUARD_MONITOR_CONNECTED_INTERVAL', '120'))  # seconds
-DISCONNECTED_INTERVAL = int(os.getenv('WIREGUARD_MONITOR_DISCONNECTED_INTERVAL', '180'))  # seconds
-CHECK_INTERVAL = int(os.getenv('WIREGUARD_MONITOR_CHECK_INTERVAL', '20'))  # seconds
+WG_JSON_SCRIPT = os.getenv('WIREGUARD_MONITOR_WG_JSON_SCRIPT', 'tools/wg-json.bash')
+CONNECTED_INTERVAL = int(os.getenv('WIREGUARD_MONITOR_CONNECTED_INTERVAL', '180'))  # seconds
+DISCONNECTED_INTERVAL = int(os.getenv('WIREGUARD_MONITOR_DISCONNECTED_INTERVAL', '240'))  # seconds
+CHECK_INTERVAL = int(os.getenv('WIREGUARD_MONITOR_CHECK_INTERVAL', '10'))  # seconds
 HOST = os.getenv('WIREGUARD_MONITOR_HOST', '0.0.0.0')
 PORT = int(os.getenv('WIREGUARD_MONITOR_PORT', '5000'))
 
@@ -31,7 +31,7 @@ def get_wireguard_status():
     global wg_status_data
     try:
         result = subprocess.run(
-            ['bash', WG_JSON_SCRIPT],
+            ['sudo', '/usr/bin/bash', WG_JSON_SCRIPT],
             capture_output=True,
             text=True,
             timeout=10
