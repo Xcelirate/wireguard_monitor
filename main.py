@@ -56,23 +56,32 @@ def analyze_peers(status):
     for interface, data in status.items():
         result[interface] = {}
         for peer_key, peer_data in data.get('peers', {}).items():
-            last_handshake = peer_data['latestHandshake']
-            delta = now - last_handshake
-            if delta <= CONNECTED_INTERVAL:
+            # Check if peer has ever connected (latestHandshake field exists)
+            if 'latestHandshake' not in peer_data:
+                # Fresh peer that has never connected
                 result[interface][peer_key] = {
-                    "status": "connected",
-                    "last_handshake_seconds_ago": delta,
+                    "status": "never_connected",
                     "endpoint": peer_data.get("endpoint"),
                     "allowedIps": peer_data.get("allowedIps", [])
                 }
-            elif delta <= DISCONNECTED_INTERVAL:
-                result[interface][peer_key] = {
-                    "status": "disconnected",
-                    "last_handshake_seconds_ago": delta,
-                    "endpoint": peer_data.get("endpoint"),
-                    "allowedIps": peer_data.get("allowedIps", [])
-                }
-            # If delta > DISCONNECTED_INTERVAL, do not show the peer
+            else:
+                last_handshake = peer_data['latestHandshake']
+                delta = now - last_handshake
+                if delta <= CONNECTED_INTERVAL:
+                    result[interface][peer_key] = {
+                        "status": "connected",
+                        "last_handshake_seconds_ago": delta,
+                        "endpoint": peer_data.get("endpoint"),
+                        "allowedIps": peer_data.get("allowedIps", [])
+                    }
+                elif delta <= DISCONNECTED_INTERVAL:
+                    result[interface][peer_key] = {
+                        "status": "disconnected",
+                        "last_handshake_seconds_ago": delta,
+                        "endpoint": peer_data.get("endpoint"),
+                        "allowedIps": peer_data.get("allowedIps", [])
+                    }
+                # If delta > DISCONNECTED_INTERVAL, do not show the peer
     return result
 
 def strip_handshake_times(analysis):
