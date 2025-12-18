@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.3 - 2025-12-18
+- Handle fresh peers that have never connected by checking for `latestHandshake` field existence.
+- Mark peers without `latestHandshake` as "never_connected" status instead of causing errors.
+
 ## 1.0.2 - 2025-12-12
 - Always use sudo and explicit /usr/bin/bash for the WireGuard status script subprocess.
 - Update default monitoring intervals: connected (180s), disconnected (240s), check interval (10s).
