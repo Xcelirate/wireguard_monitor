@@ -7,6 +7,7 @@ from flask import Flask, jsonify
 import logging
 from logging.handlers import SysLogHandler
 from threading import Lock
+import sys
 
 WG_JSON_SCRIPT = os.getenv('WIREGUARD_MONITOR_WG_JSON_SCRIPT', 'tools/wg-json.bash')
 CONNECTED_INTERVAL = int(os.getenv('WIREGUARD_MONITOR_CONNECTED_INTERVAL', '180'))  # seconds
@@ -18,8 +19,9 @@ PORT = int(os.getenv('WIREGUARD_MONITOR_PORT', '5000'))
 # Set up logging
 logger = logging.getLogger('wireguard_monitor')
 logger.setLevel(logging.INFO)
-# Use SysLogHandler. Assumes /dev/log for local syslog.
-handler = SysLogHandler(address='/dev/log')
+
+# Log to stdout; systemd captures this automatically
+handler = logging.StreamHandler(sys.stdout)
 formatter = logging.Formatter('%(name)s: %(message)s')
 handler.setFormatter(formatter)
 logger.addHandler(handler)

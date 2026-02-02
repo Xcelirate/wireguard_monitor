@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.0.4 - 2026-02-02
+- Change logging from SysLogHandler (syslog) to StreamHandler (stdout) for compatibility with systemd and containerized environments. Logs now go to stdout instead of /dev/log.
+
 ## 1.0.3 - 2025-12-18
 - Handle fresh peers that have never connected by checking for `latestHandshake` field existence.
 - Mark peers without `latestHandshake` as "never_connected" status instead of causing errors.
