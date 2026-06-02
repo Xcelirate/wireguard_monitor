@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.1.0 - 2026-06-02
+- Add `WIREGUARD_MONITOR_INTERFACES` environment variable to restrict monitoring to a comma-separated allow-list of WireGuard interfaces. When unset (default), all interfaces are monitored. Filtering is applied in `main.py` after parsing the script output, so `tools/wg-json.bash` is unchanged and `/raw`, status analysis, and logging all see a consistent view. Configured interfaces that are not present on the host trigger a one-time warning log.
+
 ## 1.0.4 - 2026-02-02
 - Change logging from SysLogHandler (syslog) to StreamHandler (stdout) for compatibility with systemd and containerized environments. Logs now go to stdout instead of /dev/log.
 

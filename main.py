@@ -16,6 +16,18 @@ CHECK_INTERVAL = int(os.getenv('WIREGUARD_MONITOR_CHECK_INTERVAL', '10'))  # sec
 HOST = os.getenv('WIREGUARD_MONITOR_HOST', '0.0.0.0')
 PORT = int(os.getenv('WIREGUARD_MONITOR_PORT', '5000'))
 
+# Optional comma-separated allow-list of interfaces to monitor.
+# Empty/unset means monitor all interfaces returned by the script.
+INTERFACES = {
+    name.strip()
+    for name in os.getenv('WIREGUARD_MONITOR_INTERFACES', '').split(',')
+    if name.strip()
+}
+
+# Track which configured-but-missing interfaces we've already warned about,
+# so we log the warning only once per missing interface.
+_warned_missing_interfaces: set[str] = set()
+
 # Set up logging
 logger = logging.getLogger('wireguard_monitor')
 logger.setLevel(logging.INFO)
@@ -41,7 +53,19 @@ def get_wireguard_status():
         if result.returncode != 0:
             wg_status_data = {"error": f"Script failed: {result.stderr}"}
         else:
-            wg_status_data = json.loads(result.stdout)
+            parsed = json.loads(result.stdout)
+            if INTERFACES and isinstance(parsed, dict):
+                present = set(parsed.keys())
+                missing = INTERFACES - present - _warned_missing_interfaces
+                for name in missing:
+                    logger.warning(json.dumps({
+                        "event": "interface_not_found",
+                        "interface": name,
+                        "timestamp": int(time.time())
+                    }))
+                    _warned_missing_interfaces.add(name)
+                parsed = {k: v for k, v in parsed.items() if k in INTERFACES}
+            wg_status_data = parsed
     except subprocess.TimeoutExpired:
         wg_status_data = {"error": "Script execution timed out"}
     except Exception as e:

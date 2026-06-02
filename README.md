@@ -68,6 +68,7 @@ You can configure the following environment variables:
 - `WIREGUARD_MONITOR_CHECK_INTERVAL`: How often to check status (default: `10`)
 - `WIREGUARD_MONITOR_HOST`: Host for Flask app (default: `0.0.0.0`, only used for development server)
 - `WIREGUARD_MONITOR_PORT`: Port for Flask app (default: `5000`, only used for development server)
+- `WIREGUARD_MONITOR_INTERFACES`: Comma-separated allow-list of WireGuard interfaces to monitor, e.g. `wg0,wg1`. If empty or unset (default), all interfaces returned by the script are monitored. Interfaces in the list that do not exist on the host are ignored (a one-time warning is logged).
 
 ## Status Output
 
